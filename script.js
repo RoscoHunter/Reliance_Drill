@@ -34,16 +34,13 @@ function parseQuestionText(fullQuestion) {
 }
 
 /**
- * Utility function to:
- *  1. Capitalise the first letter in the string
- *  2. Capitalise every letter that follows a full stop
+ * Capitalise every letter that follows a full stop,
+ * but do NOT capitalise the first character of the entire string.
  */
-function capitaliseSentences(str) {
+function capitaliseAfterPeriods(str) {
   if (!str) return str.trim();
 
-  // Capitalise the first letter
   let result = str.trim();
-  result = result.charAt(0).toUpperCase() + result.slice(1);
 
   // Capitalise after each full stop
   result = result.replace(/(\.\s*)([a-zA-Z])/g, (match, punct, letter) => {
@@ -117,9 +114,11 @@ function displayQuestion() {
   const currentQ = questionsData[currentQuestionIndex];
   const { question, options } = parseQuestionText(currentQ["Full Question"] || "");
 
-  // Capitalise question and options
-  const capitalisedQuestion = capitaliseSentences(question);
-  const capitalisedOptions = capitaliseSentences(options);
+  // DO NOT capitalise the question at all
+  const unmodifiedQuestion = question;
+
+  // Only capitalise after periods for the options
+  const modifiedOptions = capitaliseAfterPeriods(options);
 
   // Decide whether to show helpful or harmful
   const randomSample = Math.random() < 0.5 ? "helpful" : "harmful";
@@ -143,15 +142,15 @@ function displayQuestion() {
   // Build the final Choice & Explanation
   const { choice, explanation } = buildChoiceAndExplanation(rawAnswer, rawExplanation);
 
-  // Capitalise choice and explanation
-  const capitalisedChoice = capitaliseSentences(choice);
-  const capitalisedExplanation = capitaliseSentences(explanation);
+  // Capitalise after periods for choice and explanation
+  const modifiedChoice = capitaliseAfterPeriods(choice);
+  const modifiedExplanation = capitaliseAfterPeriods(explanation);
 
   // Update DOM
-  document.getElementById('question-text').textContent = capitalisedQuestion;
-  document.getElementById('options-text').textContent = capitalisedOptions;
-  document.getElementById('choice-text').textContent = capitalisedChoice;
-  document.getElementById('explanation-text').textContent = capitalisedExplanation;
+  document.getElementById('question-text').textContent = unmodifiedQuestion;
+  document.getElementById('options-text').textContent = modifiedOptions;
+  document.getElementById('choice-text').textContent = modifiedChoice;
+  document.getElementById('explanation-text').textContent = modifiedExplanation;
 
   addSeparatorLine();
 
@@ -161,9 +160,9 @@ function displayQuestion() {
       "Correct",
       randomSample,
       displayedAnswerCorrect,
-      capitalisedQuestion,
-      capitalisedChoice,
-      capitalisedExplanation
+      unmodifiedQuestion,
+      modifiedChoice,
+      modifiedExplanation
     );
   };
   document.getElementById('incorrect-btn').onclick = () => {
@@ -171,9 +170,9 @@ function displayQuestion() {
       "Incorrect",
       randomSample,
       displayedAnswerCorrect,
-      capitalisedQuestion,
-      capitalisedChoice,
-      capitalisedExplanation
+      unmodifiedQuestion,
+      modifiedChoice,
+      modifiedExplanation
     );
   };
 }
