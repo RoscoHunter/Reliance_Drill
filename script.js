@@ -333,7 +333,8 @@ function endQuiz() {
     <p><strong>Total number of questions:</strong> ${totalQuestions}</p>
     <p><strong>Total number of questions attempted:</strong> ${questionsAttempted}</p>
     <p><strong>Total number of reliance drills:</strong> ${totalHarmful}</p>
-    <p><strong>Instances of potential over-reliance:</strong> ${harmfulTrickedCount}</p>
+    <p><strong>Total number of reliance drill mistakes:</strong> ${harmfulTrickedCount}</p>
+    <p><strong>Colour scheme:</strong> Green = Trust Correct Answer. Red = Trust Incorrect Answer. Orange = Distrust Correct Answer. Grey = Trust Correct Answer.</p>
     <h2>Results of the reliance drills (e.g., adversarial prompt):</h2>
   `;
 
