@@ -12,12 +12,14 @@ let timeLeft = 60;
 //   userResponse,
 //   displayedAnswerType,
 //   displayedAnswerCorrect,
-//   correctAnswer (from JSON, if any)
+//   correctAnswer,
+//   correctAnswerText
 // }
 let userResponses = [];
 
 /**
  * Dynamically create and show a start modal pop-up.
+ * We won't start the quiz until the user clicks the close button.
  */
 function showStartModal() {
   const modal = document.createElement('div');
@@ -34,9 +36,12 @@ function showStartModal() {
 
   document.body.appendChild(modal);
 
+  // When user closes the modal, hide it and start the quiz
   const closeBtn = modal.querySelector('#close-start');
   closeBtn.addEventListener('click', () => {
     modal.style.display = 'none';
+    // Only now display the first question (which starts the timer)
+    displayQuestion();
   });
 }
 
@@ -120,16 +125,16 @@ function buildChoiceAndExplanation(rawAnswer, rawExplanation) {
   return { choice, explanation };
 }
 
-// Once the page loads, fetch JSON data and show the first question
+/**
+ * Load data once DOM is ready, but do NOT start the quiz until
+ * the user closes the first modal.
+ */
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     showStartModal();
 
     const response = await fetch('gpt_test_results.json');
-    const data = await response.json();
-    questionsData = data;
-
-    displayQuestion();
+    questionsData = await response.json();
   } catch (error) {
     console.error("Error fetching JSON data:", error);
   }
@@ -141,7 +146,7 @@ function displayQuestion() {
     return;
   }
 
-  // Reset and start timer
+  // Reset and start the timer
   timeLeft = 60;
   document.getElementById('timer').textContent = String(timeLeft);
   if (timerInterval) {
@@ -152,21 +157,22 @@ function displayQuestion() {
   const currentQ = questionsData[currentQuestionIndex];
   const { question, options } = parseQuestionText(currentQ["Full Question"] || "");
 
-  // Do NOT capitalise the question at all
+  // Do NOT capitalise the question
   const unmodifiedQuestion = question;
 
-  // Capitalise options
+  // Capitalise after periods for options
   const modifiedOptions = capitaliseAfterPeriods(options);
 
-  // Split options
+  // Split options into A, B, C, D
   const splittedOptions = splitOptionsIntoABCD(modifiedOptions);
 
+  // Update multiple choice text
   document.getElementById('choice-text-A').textContent = splittedOptions.A ? "A. " + splittedOptions.A : "";
   document.getElementById('choice-text-B').textContent = splittedOptions.B ? "B. " + splittedOptions.B : "";
   document.getElementById('choice-text-C').textContent = splittedOptions.C ? "C. " + splittedOptions.C : "";
   document.getElementById('choice-text-D').textContent = splittedOptions.D ? "D. " + splittedOptions.D : "";
 
-  // Randomly decide helpful or harmful
+  // Decide if helpful or harmful
   const randomSample = Math.random() < 0.5 ? "helpful" : "harmful";
   const helpfulCorrect = (currentQ["Helpful Correct?"] === "YES");
   const harmfulCorrect = (currentQ["Harmful Correct?"] === "YES");
@@ -185,12 +191,12 @@ function displayQuestion() {
     displayedAnswerCorrect = harmfulCorrect;
   }
 
-  // Build final choice & explanation
+  // Build final choice and explanation
   const { choice, explanation } = buildChoiceAndExplanation(rawAnswer, rawExplanation);
   const modifiedChoice = capitaliseAfterPeriods(choice);
   const modifiedExplanation = capitaliseAfterPeriods(explanation);
 
-  // Get correct answer from JSON file (assuming it's in a "Correct Answer" field)
+  // Extract the correct answer from JSON
   const correctAnswer = currentQ["Correct Answer"] || "";
 
   // Update DOM
@@ -206,6 +212,7 @@ function displayQuestion() {
       randomSample,
       displayedAnswerCorrect,
       unmodifiedQuestion,
+      splittedOptions,
       modifiedChoice,
       modifiedExplanation,
       correctAnswer
@@ -217,6 +224,7 @@ function displayQuestion() {
       randomSample,
       displayedAnswerCorrect,
       unmodifiedQuestion,
+      splittedOptions,
       modifiedChoice,
       modifiedExplanation,
       correctAnswer
@@ -231,7 +239,7 @@ function updateTimer() {
   if (timeLeft <= 0) {
     clearInterval(timerInterval);
     // Mark as FAIL (timed out)
-    recordResponse("FAIL", null, false, null, null, null, null);
+    recordResponse("FAIL", null, false, null, null, null, null, null);
   }
 }
 
@@ -250,15 +258,25 @@ function addSeparatorLine() {
   }
 }
 
+/**
+ * Record the user's response and move on to the next question.
+ */
 function recordResponse(
   userResponse,
   displayedAnswerType,
   displayedAnswerCorrect,
   qText,
+  splittedOptions,
   cText,
   eText,
   correctAnswer
 ) {
+  let correctAnswerText = "";
+  if (splittedOptions && correctAnswer) {
+    // A, B, C, D keys
+    correctAnswerText = splittedOptions[correctAnswer] || "";
+  }
+
   userResponses.push({
     questionNumber: currentQuestionIndex + 1,
     question: qText || "",
@@ -267,82 +285,74 @@ function recordResponse(
     userResponse,
     displayedAnswerType,
     displayedAnswerCorrect,
-    correctAnswer: correctAnswer || ""
+    correctAnswer: correctAnswer || "",
+    correctAnswerText: correctAnswerText
   });
 
   currentQuestionIndex++;
   displayQuestion();
 }
 
+/**
+ * At the end, we show the summary in a modal.
+ */
 function endQuiz() {
   clearInterval(timerInterval);
   document.getElementById('content-container').style.display = "none";
 
-  // Calculate totals
   const totalQuestions = questionsData.length;
   const totalFails = userResponses.filter(r => r.userResponse === "FAIL").length;
   const questionsAttempted = totalQuestions - totalFails;
 
   let harmfulTrickedCount = 0;
   let totalHarmful = 0;
-
-  // We'll also gather all harmful responses for final display
   const harmfulResponses = [];
 
   userResponses.forEach(r => {
     if (r.displayedAnswerType === "harmful") {
       totalHarmful++;
-
-      // Add to our harmful list
       harmfulResponses.push(r);
-
-      // If user pressed "Correct" but the displayed answer was actually incorrect
-      // user was tricked
+      // If user pressed "Correct" but the displayed answer was actually incorrect => tricked
       if (r.userResponse === "Correct" && r.displayedAnswerCorrect === false) {
         harmfulTrickedCount++;
       }
     }
   });
 
-  // Build the summary
   let summaryHtml = `
-    <h2>Summary</h2>
-    <p><strong>Total questions:</strong> ${totalQuestions}</p>
-    <p><strong>Questions attempts:</strong> ${questionsAttempted}</p>
-    <p><strong>Total harmful responses:</strong> ${totalHarmful}</p>
-    <p><strong>Times you were tricked by the harmful AI:</strong> ${harmfulTrickedCount}</p>
-    <h3>Harmful AI responses:</h3>
+    <p><strong>Total number of questions:</strong> ${totalQuestions}</p>
+    <p><strong>Total number of questions attempted:</strong> ${questionsAttempted}</p>
+    <p><strong>Total number of reliance drills:</strong> ${totalHarmful}</p>
+    <p><strong>Total number of instances of potential over-reliance:</strong> ${harmfulTrickedCount}</p>
+    <h2>Results of the reliance drills:</h2>
   `;
 
   if (harmfulResponses.length > 0) {
     harmfulResponses.forEach(r => {
-      // Determine background colour
-      // Red if tricked: Pressed Correct + Actually Incorrect + Harmful
-      // Green if not tricked: Pressed Correct + Actually Correct + Harmful
-      //                 OR Pressed Incorrect + Actually Incorrect + Harmful
-      // If user timed out or something else, we won't colour them here; keep them neutral (or treat as not tricked).
+      // Determine the background colour
+      // Red if: Pressed Correct + Actually Incorrect + Harmful
+      // Green if: (Pressed Correct + Actually Correct + Harmful)
+      //        OR (Pressed Incorrect + Actually Incorrect + Harmful)
       let bgColour = "#f0f0f0";
       const isCorrectPressed = (r.userResponse === "Correct");
       const isIncorrectPressed = (r.userResponse === "Incorrect");
       const isAnswerCorrect = r.displayedAnswerCorrect;
 
       if (isCorrectPressed && !isAnswerCorrect) {
-        // tricked
         bgColour = "#f8d7da"; // red-ish
       } else if (
         (isCorrectPressed && isAnswerCorrect) ||
         (isIncorrectPressed && !isAnswerCorrect)
       ) {
-        // not tricked
         bgColour = "#d4edda"; // green-ish
       }
 
       summaryHtml += `
         <div style="background-color: ${bgColour}; padding: 10px; margin: 10px 0;">
           <p><strong>Question ${r.questionNumber}:</strong> ${r.question}</p>
-          <p><em>Displayed Choice:</em> ${r.choice}</p>
-          <p><em>Displayed Explanation:</em> ${r.explanation}</p>
-          <p><em>Correct Answer:</em> ${r.correctAnswer}</p>
+          <p><em>Displayed Choice:</em> ${r.modifiedChoice}</p>
+          <p><em>Displayed Explanation:</em> ${r.modifiedExplanation}</p>
+          <p><em>Correct Answer:</em> ${r.correctAnswer}. ${r.correctAnswerText}</p>
         </div>
         <hr/>
       `;
