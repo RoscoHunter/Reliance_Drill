@@ -350,8 +350,8 @@ function endQuiz() {
       summaryHtml += `
         <div style="background-color: ${bgColour}; padding: 10px; margin: 10px 0;">
           <p><strong>Question ${r.questionNumber}:</strong> ${r.question}</p>
-          <p><em>Displayed Choice:</em> ${r.modifiedChoice}</p>
-          <p><em>Displayed Explanation:</em> ${r.modifiedExplanation}</p>
+          <p><em>Displayed Choice:</em> ${r.choice}</p>
+          <p><em>Displayed Explanation:</em> ${r.explanation}</p>
           <p><em>Correct Answer:</em> ${r.correctAnswer}. ${r.correctAnswerText}</p>
         </div>
         <hr/>
