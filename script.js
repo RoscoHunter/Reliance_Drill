@@ -1,7 +1,8 @@
 let questionsData = [];
 let currentQuestionIndex = 0;
+let currentDisplayedAnswerType = ""; // We'll store "harmful" or "helpful" here
 let timerInterval = null;
-let timeLeft = 40;
+let timeLeft = 60;
 
 // We'll keep track of each user response with:
 // {
@@ -18,133 +19,8 @@ let timeLeft = 40;
 let userResponses = [];
 
 /**
- * Dynamically create and show a start modal pop-up.
- * We won't start the quiz until the user clicks the close button.
+ * Example function for displaying a question.
  */
-function showStartModal() {
-  const modal = document.createElement('div');
-  modal.id = 'start-modal';
-  modal.className = 'modal';
-  modal.style.display = 'block'; // Make it visible immediately
-
-  modal.innerHTML = `
-  <div class="modal-content">
-    <span class="close" id="close-start">&times;</span>
-    <h2>Instructions:</h2>
-    <p>Reliance drills are a novel safety practice designed to help organisations identify and mitigate human over-reliance on AI assistance. These drills deliberately introduce errors into AI-generated outputs, allowing organisations to evaluate whether human reviewers can detect and address these mistakes. Such safety practices are critical in detail-sensitive sectors, where undetected errors can lead to significant negative consequences.<br><br>
-    For instance, in a medical setting, reliance drills might involve deliberately inserting subtle inaccuracies into a small number of AI-generated patient emails or treatment recommendations. By doing so, healthcare organisations can assess whether their staff apply appropriate scepticism and verification practices when working with AI tools, ensuring the reliability of critical decisions.<br><br>
-    This website hosts a toy example of reliance drills. Once you close these instructions, you will be presented with 20 multiple-choice questions sourced from the MMLU dataset. Each question includes an AI-generated response (produced by OpenAI’s GPT-4o-2024-08-06), and your task is to determine whether you trust the AI’s answer.<br><br>
-    For each question you are expected to select: “Do Not Trust AI Answer” or “Trust AI Answer.” If no response is selected within the 40-second timer, the question will be automatically skipped. Notably, for a random subset of the questions, the AI answers are generated using an adversarial prompt, which is designed to provoke false or misleading AI answers.<br><br>
-    While these multiple-choice questions provide a simplified demonstration of reliance drills, real-world deployment would involve applying these same ideas to more realistic, open-ended scenarios. For further details on reliance drills, please refer to the paper <a href="https://arxiv.org/pdf/2409.14055">“Monitoring Human Dependence on AI Systems with Reliance Drills.”</a></p>
-  </div>
-`;
-
-  document.body.appendChild(modal);
-
-  // When user closes the modal, hide it and start the quiz
-  const closeBtn = modal.querySelector('#close-start');
-  closeBtn.addEventListener('click', () => {
-    modal.style.display = 'none';
-    // Only now display the first question (which starts the timer)
-    displayQuestion();
-  });
-}
-
-/**
- * Splits "Full Question" into:
- *  - question: everything before "A."
- *  - options: everything from "A." onward
- */
-function parseQuestionText(fullQuestion) {
-  const indexA = fullQuestion.indexOf("A.");
-  if (indexA > -1) {
-    return {
-      question: fullQuestion.slice(0, indexA).trim(),
-      options: fullQuestion.slice(indexA).trim()
-    };
-  } else {
-    return { question: fullQuestion, options: "" };
-  }
-}
-
-/**
- * Capitalise every letter that follows a full stop,
- * but do NOT capitalise the first character of the entire string.
- */
-function capitaliseAfterPeriods(str) {
-  if (!str) return str.trim();
-
-  let result = str.trim();
-  result = result.replace(/(\.\s*)([a-zA-Z])/g, (match, punct, letter) => {
-    return punct + letter.toUpperCase();
-  });
-
-  return result;
-}
-
-/**
- * Splits the options text into separate chunks for A, B, C, D.
- */
-function splitOptionsIntoABCD(optionsStr) {
-  const result = { A: "", B: "", C: "", D: "" };
-  const pattern = /A\.\s*(.*?)(?=B\.|$)|B\.\s*(.*?)(?=C\.|$)|C\.\s*(.*?)(?=D\.|$)|D\.\s*(.*)/gs;
-  let match;
-
-  while ((match = pattern.exec(optionsStr)) !== null) {
-    if (match[1] !== undefined) {
-      result.A = match[1].trim();
-    } else if (match[2] !== undefined) {
-      result.B = match[2].trim();
-    } else if (match[3] !== undefined) {
-      result.C = match[3].trim();
-    } else if (match[4] !== undefined) {
-      result.D = match[4].trim();
-    }
-  }
-  return result;
-}
-
-/**
- * Creates the final Choice and Explanation from rawAnswer + rawExplanation,
- * splitting on the first occurrence of " - " only.
- */
-function buildChoiceAndExplanation(rawAnswer, rawExplanation) {
-  let answerText = rawAnswer.trim().replace(/\.*$/, "");
-  let explanationText = rawExplanation.trim();
-
-  const dashIndex = explanationText.indexOf(" - ");
-  let firstHalf = "";
-  let secondHalf = "";
-
-  if (dashIndex >= 0) {
-    firstHalf = explanationText.slice(0, dashIndex).trim();
-    secondHalf = explanationText.slice(dashIndex + 3).trim();
-  } else {
-    firstHalf = explanationText;
-    secondHalf = "";
-  }
-
-  const choice = answerText + ". " + firstHalf;
-  const explanation = secondHalf;
-
-  return { choice, explanation };
-}
-
-/**
- * Load data once DOM is ready, but do NOT start the quiz until
- * the user closes the first modal.
- */
-window.addEventListener('DOMContentLoaded', async () => {
-  try {
-    showStartModal();
-
-    const response = await fetch('gpt_test_results.json');
-    questionsData = await response.json();
-  } catch (error) {
-    console.error("Error fetching JSON data:", error);
-  }
-});
-
 function displayQuestion() {
   if (currentQuestionIndex >= questionsData.length) {
     endQuiz();
@@ -152,7 +28,7 @@ function displayQuestion() {
   }
 
   // Reset and start the timer
-  timeLeft = 40;
+  timeLeft = 60;
   document.getElementById('timer').textContent = String(timeLeft);
   if (timerInterval) {
     clearInterval(timerInterval);
@@ -160,25 +36,12 @@ function displayQuestion() {
   timerInterval = setInterval(updateTimer, 1000);
 
   const currentQ = questionsData[currentQuestionIndex];
-  const { question, options } = parseQuestionText(currentQ["Full Question"] || "");
+  // (Insert your existing question parsing code here)
 
-  // Do NOT capitalise the question
-  const unmodifiedQuestion = question;
-
-  // Capitalise after periods for options
-  const modifiedOptions = capitaliseAfterPeriods(options);
-
-  // Split options into A, B, C, D
-  const splittedOptions = splitOptionsIntoABCD(modifiedOptions);
-
-  // Update multiple choice text
-  document.getElementById('choice-text-A').textContent = splittedOptions.A ? "A. " + splittedOptions.A : "";
-  document.getElementById('choice-text-B').textContent = splittedOptions.B ? "B. " + splittedOptions.B : "";
-  document.getElementById('choice-text-C').textContent = splittedOptions.C ? "C. " + splittedOptions.C : "";
-  document.getElementById('choice-text-D').textContent = splittedOptions.D ? "D. " + splittedOptions.D : "";
-
-  // Decide if helpful or harmful
+  // Decide if helpful or harmful for the current question
   const randomSample = Math.random() < 0.5 ? "helpful" : "harmful";
+  currentDisplayedAnswerType = randomSample; // Store so we can reference it on time-out
+
   const helpfulCorrect = (currentQ["Helpful Correct?"] === "YES");
   const harmfulCorrect = (currentQ["Harmful Correct?"] === "YES");
 
@@ -196,75 +59,61 @@ function displayQuestion() {
     displayedAnswerCorrect = harmfulCorrect;
   }
 
-  // Build final choice and explanation
-  const { choice, explanation } = buildChoiceAndExplanation(rawAnswer, rawExplanation);
-  const modifiedChoice = capitaliseAfterPeriods(choice);
-  const modifiedExplanation = capitaliseAfterPeriods(explanation);
+  // (Your existing code to build the final displayed question goes here)
 
-  // Extract the correct answer from JSON
-  const correctAnswer = currentQ["Correct Answer"] || "";
-
-  // Update DOM
-  document.getElementById('question-text').textContent = unmodifiedQuestion;
-  document.getElementById('choice-text').textContent = modifiedChoice;
-  document.getElementById('explanation-text').textContent = modifiedExplanation;
-
-  addSeparatorLine();
-
+  // Example onClick handlers
   document.getElementById('correct-btn').onclick = () => {
     recordResponse(
       "Correct",
-      randomSample,
+      currentDisplayedAnswerType,
       displayedAnswerCorrect,
-      unmodifiedQuestion,
+      questionText,         // from your parse
       splittedOptions,
-      modifiedChoice,
-      modifiedExplanation,
+      finalChoiceText,      // from your buildChoiceAndExplanation
+      finalExplanationText, // from your buildChoiceAndExplanation
       correctAnswer
     );
   };
+
   document.getElementById('incorrect-btn').onclick = () => {
     recordResponse(
       "Incorrect",
-      randomSample,
+      currentDisplayedAnswerType,
       displayedAnswerCorrect,
-      unmodifiedQuestion,
+      questionText,
       splittedOptions,
-      modifiedChoice,
-      modifiedExplanation,
+      finalChoiceText,
+      finalExplanationText,
       correctAnswer
     );
   };
 }
 
+/**
+ * If time runs out, mark as FAIL but still pass the known displayedAnswerType
+ * so we know if it was a harmful or helpful question.
+ */
 function updateTimer() {
   timeLeft--;
   document.getElementById('timer').textContent = String(timeLeft);
 
   if (timeLeft <= 0) {
     clearInterval(timerInterval);
-    // Mark as FAIL (timed out)
-    recordResponse("FAIL", null, false, null, null, null, null, null);
+    recordResponse(
+      "FAIL", 
+      currentDisplayedAnswerType,   // Key fix: pass “harmful” or “helpful”
+      false,
+      questionText,                // same question text
+      splittedOptions,
+      finalChoiceText,
+      finalExplanationText,
+      correctAnswer
+    );
   }
 }
 
 /**
- * Inserts a line of underscores above the timer if not already present.
- */
-function addSeparatorLine() {
-  const parent = document.getElementById('content-container');
-  const timerBox = document.getElementById('timer-box');
-  if (!document.getElementById('separator-line')) {
-    const sep = document.createElement('p');
-    sep.id = "separator-line";
-    sep.style.textAlign = "center"; 
-    sep.textContent = "___________";
-    parent.insertBefore(sep, timerBox);
-  }
-}
-
-/**
- * Record the user's response and move on to the next question.
+ * Records the user's response (including missed ones).
  */
 function recordResponse(
   userResponse,
@@ -278,7 +127,6 @@ function recordResponse(
 ) {
   let correctAnswerText = "";
   if (splittedOptions && correctAnswer) {
-    // A, B, C, D keys
     correctAnswerText = splittedOptions[correctAnswer] || "";
   }
 
@@ -298,6 +146,9 @@ function recordResponse(
   displayQuestion();
 }
 
+/**
+ * Display the final results, including unanswered questions.
+ */
 function endQuiz() {
   clearInterval(timerInterval);
   document.getElementById('content-container').style.display = "none";
@@ -306,19 +157,17 @@ function endQuiz() {
   const totalFails = userResponses.filter(r => r.userResponse === "FAIL").length;
   const questionsAttempted = totalQuestions - totalFails;
 
-  // Count harmful answers (reliance drills) and how many times users were 'tricked'
   let harmfulTrickedCount = 0;
   let totalHarmful = 0;
-
-  // Separate responses into harmful or helpful for reporting
   const harmfulResponses = [];
   const helpfulResponses = [];
 
+  // Separate responses by displayedAnswerType
   userResponses.forEach(r => {
     if (r.displayedAnswerType === "harmful") {
       totalHarmful++;
       harmfulResponses.push(r);
-      // If user pressed "Trust AI Answer" but displayed answer was incorrect
+      // “Tricked” if user pressed "Trust AI Answer" but the AI was incorrect
       if (r.userResponse === "Correct" && r.displayedAnswerCorrect === false) {
         harmfulTrickedCount++;
       }
@@ -327,61 +176,60 @@ function endQuiz() {
     }
   });
 
-  // Build the top summary
   let summaryHtml = `
     <p><strong>Total number of questions:</strong> ${totalQuestions}</p>
     <p><strong>Total number of questions attempted:</strong> ${questionsAttempted}</p>
     <p><strong>Total number of reliance drills:</strong> ${totalHarmful}</p>
     <p><strong>Instances of potential over-reliance:</strong> ${harmfulTrickedCount}</p>
+    <p><strong>Colour scheme:</strong> Green = Identify incorrect AI answer. Grey = Trust correct AI answer.  Red = Over-reliance. Orange = Under-reliance. Blue = No answer.</p>
     <h2>Results of the reliance drills (e.g., adversarial prompt):</h2>
   `;
 
   /**
-   * New colour scheme:
-   *   - Green:  "Do Not Trust" + AI is incorrect
-   *   - Red:    "Trust" + AI is incorrect
-   *   - Orange: "Do Not Trust" + AI is correct
-   *   - Grey:   "Trust" + AI is correct
-   *   - Blue:   No answer (r.userResponse === "FAIL")
+   * Colour scheme:
+   *  - Green:  “Do Not Trust” + AI incorrect
+   *  - Red:    “Trust” + AI incorrect
+   *  - Orange: “Do Not Trust” + AI correct
+   *  - Grey:   “Trust” + AI correct
+   *  - Blue:   No answer (FAIL)
    */
   function getBackgroundColour(r) {
-    // 1) If no response
     if (r.userResponse === "FAIL") {
-      return "#cce5ff";  // blue
+      // No answer
+      return "#cce5ff"; // blue
     }
-
     const userTrustedAI = (r.userResponse === "Correct");       // "Trust AI Answer"
     const userDidNotTrustAI = (r.userResponse === "Incorrect"); // "Do Not Trust AI Answer"
     const aiAnswerCorrect = r.displayedAnswerCorrect;
 
-    // 2) "Do Not Trust" + AI is incorrect => green
-    //    "Do Not Trust" + AI is correct => orange
+    // "Do Not Trust" + AI incorrect => green
     if (userDidNotTrustAI && !aiAnswerCorrect) {
       return "#d4edda"; // green
-    } else if (userDidNotTrustAI && aiAnswerCorrect) {
+    }
+    // "Do Not Trust" + AI correct => orange
+    if (userDidNotTrustAI && aiAnswerCorrect) {
       return "#ffeeba"; // orange
     }
-
-    // 3) "Trust" + AI is incorrect => red
-    //    "Trust" + AI is correct => grey
+    // "Trust" + AI incorrect => red
     if (userTrustedAI && !aiAnswerCorrect) {
       return "#f8d7da"; // red
-    } else if (userTrustedAI && aiAnswerCorrect) {
+    }
+    // "Trust" + AI correct => grey
+    if (userTrustedAI && aiAnswerCorrect) {
       return "#f0f0f0"; // grey
     }
-
-    // Fallback (just in case)
-    return "#f0f0f0"; 
+    // Fallback, just in case
+    return "#f0f0f0";
   }
 
-  // Helper function to display user response in text
+  // Convert userResponse into friendly label
   function getUserResponseLabel(r) {
     if (r.userResponse === "Correct") {
       return "Trust AI Answer";
     } else if (r.userResponse === "Incorrect") {
       return "Do Not Trust AI Answer";
     } else if (r.userResponse === "FAIL") {
-      return "No response";
+      return "Not answered";
     }
     return r.userResponse;
   }
@@ -409,7 +257,6 @@ function endQuiz() {
   summaryHtml += `
     <h2>Results of the AI functioning normally (e.g., no adversarial prompt):</h2>
   `;
-
   if (helpfulResponses.length > 0) {
     helpfulResponses.forEach(r => {
       const bgColour = getBackgroundColour(r);
