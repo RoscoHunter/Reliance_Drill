@@ -253,16 +253,16 @@ function updateTimer() {
 
   if (timeLeft <= 0) {
     clearInterval(timerInterval);
-    // Pass the current question info to recordResponse so it actually appears in the summary
+
     recordResponse(
-      "FAIL",
-      window.currentQuestionData.displayedAnswerType,
-      window.currentQuestionData.displayedAnswerCorrect,
-      window.currentQuestionData.question,
-      window.currentQuestionData.splittedOptions,
-      window.currentQuestionData.cText,
-      window.currentQuestionData.eText,
-      window.currentQuestionData.correctAnswer
+      "FAIL", // Timeout occurred
+      window.currentQuestionData?.displayedAnswerType || "Unknown",
+      window.currentQuestionData?.displayedAnswerCorrect || false,
+      window.currentQuestionData?.question || "Unknown question",
+      window.currentQuestionData?.splittedOptions || { A: "", B: "", C: "", D: "" },
+      window.currentQuestionData?.cText || "Choice missing",
+      window.currentQuestionData?.eText || "Explanation missing",
+      window.currentQuestionData?.correctAnswer || "Unknown"
     );
   }
 }
@@ -286,36 +286,36 @@ function addSeparatorLine() {
  * Record the user's response and move on to the next question.
  */
 function recordResponse(
-  userResponse,
-  displayedAnswerType,
-  displayedAnswerCorrect,
-  qText,
-  splittedOptions,
-  cText,
-  eText,
-  correctAnswer
+  userResponse, 
+  displayedAnswerType = "Unknown", 
+  displayedAnswerCorrect = false, 
+  qText = "Unknown question", 
+  splittedOptions = { A: "", B: "", C: "", D: "" }, 
+  cText = "Choice missing", 
+  eText = "Explanation missing", 
+  correctAnswer = ""
 ) {
   let correctAnswerText = "";
   if (splittedOptions && correctAnswer) {
-    // A, B, C, D keys
     correctAnswerText = splittedOptions[correctAnswer] || "";
   }
 
   userResponses.push({
     questionNumber: currentQuestionIndex + 1,
-    question: qText || "",
-    choice: cText || "",
-    explanation: eText || "",
-    userResponse,
-    displayedAnswerType,
-    displayedAnswerCorrect,
-    correctAnswer: correctAnswer || "",
-    correctAnswerText: correctAnswerText
+    question: qText || "Unknown question",
+    choice: cText || "No choice displayed",
+    explanation: eText || "No explanation displayed",
+    userResponse: userResponse === "FAIL" ? "Unknown (Timeout)" : userResponse,
+    displayedAnswerType: displayedAnswerType || "Unknown",
+    displayedAnswerCorrect: displayedAnswerCorrect,
+    correctAnswer: correctAnswer || "Unknown",
+    correctAnswerText: correctAnswerText || "No correct answer text"
   });
 
   currentQuestionIndex++;
   displayQuestion();
 }
+
 
 function endQuiz() {
   clearInterval(timerInterval);
@@ -397,11 +397,11 @@ function endQuiz() {
       return "Trust AI Answer";
     } else if (r.userResponse === "Incorrect") {
       return "Do Not Trust AI Answer";
-    } else if (r.userResponse === "FAIL") {
-      return "No response";
+    } else if (r.userResponse === "Unknown (Timeout)") {
+      return "No response (Timeout)";
     }
     return r.userResponse;
-  }
+  }  
 
   // Show harmful (adversarial) questions
   if (harmfulResponses.length > 0) {
