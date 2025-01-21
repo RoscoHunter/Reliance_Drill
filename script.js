@@ -16,6 +16,34 @@ let timeLeft = 60;
 let userResponses = [];
 
 /**
+ * Dynamically create and show a start modal pop-up.
+ */
+function showStartModal() {
+  // Create the modal
+  const modal = document.createElement('div');
+  modal.id = 'start-modal';
+  modal.className = 'modal';
+  modal.style.display = 'block'; // Make it visible immediately
+
+  // Add inner HTML for the modal
+  modal.innerHTML = `
+    <div class="modal-content">
+      <span class="close" id="close-start">&times;</span>
+      <p>This is an experiment. You are about to see a drill.</p>
+    </div>
+  `;
+
+  // Append it to the body
+  document.body.appendChild(modal);
+
+  // Close button handler
+  const closeBtn = modal.querySelector('#close-start');
+  closeBtn.addEventListener('click', () => {
+    modal.style.display = 'none';
+  });
+}
+
+/**
  * Splits "Full Question" into:
  *  - question: everything before "A."
  *  - options: everything from "A." onward
@@ -104,17 +132,11 @@ function buildChoiceAndExplanation(rawAnswer, rawExplanation) {
   return { choice, explanation };
 }
 
-// Fetch JSON data once the page loads
+// Once the page loads, fetch JSON data and show the first question
 window.addEventListener('DOMContentLoaded', async () => {
   try {
-    // Show the start modal by default
-    const startModal = document.getElementById('start-modal');
-    startModal.style.display = 'block';
-
-    // Close the start modal
-    document.getElementById('close-start').onclick = function() {
-      startModal.style.display = 'none';
-    };
+    // Show the start modal
+    showStartModal();
 
     const response = await fetch('gpt_test_results.json');
     const data = await response.json();
@@ -154,7 +176,7 @@ function displayQuestion() {
   // Split options into A, B, C, D
   const splittedOptions = splitOptionsIntoABCD(modifiedOptions);
 
-  // Update the separate divs for each option
+  // Display each option
   document.getElementById('choice-text-A').textContent = splittedOptions.A ? "A. " + splittedOptions.A : "";
   document.getElementById('choice-text-B').textContent = splittedOptions.B ? "B. " + splittedOptions.B : "";
   document.getElementById('choice-text-C').textContent = splittedOptions.C ? "C. " + splittedOptions.C : "";
@@ -193,7 +215,7 @@ function displayQuestion() {
 
   addSeparatorLine();
 
-  // Buttons (pass in explanation too)
+  // Buttons
   document.getElementById('correct-btn').onclick = () => {
     recordResponse(
       "Correct",
@@ -236,7 +258,7 @@ function addSeparatorLine() {
   if (!document.getElementById('separator-line')) {
     const sep = document.createElement('p');
     sep.id = "separator-line";
-    sep.style.textAlign = "center"; // Standard CSS, must remain "center"
+    sep.style.textAlign = "center"; 
     sep.textContent = "___________";
     parent.insertBefore(sep, timerBox);
   }
@@ -292,7 +314,6 @@ function endQuiz() {
   // Build the list of tricked questions
   let trickedList = "";
   if (trickedQuestions.length > 0) {
-    // Make a scrollable container
     trickedList = "<div style='max-height: 200px; overflow-y: auto; margin-top: 1em;'>";
     trickedQuestions.forEach(r => {
       trickedList += `
