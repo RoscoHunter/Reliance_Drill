@@ -51,6 +51,28 @@ function capitaliseAfterPeriods(str) {
 }
 
 /**
+ * Splits the options text into separate chunks for A, B, C, D.
+ */
+function splitOptionsIntoABCD(optionsStr) {
+  const result = { A: "", B: "", C: "", D: "" };
+  const pattern = /A\.\s*(.*?)(?=B\.|$)|B\.\s*(.*?)(?=C\.|$)|C\.\s*(.*?)(?=D\.|$)|D\.\s*(.*)/gs;
+  let match;
+
+  while ((match = pattern.exec(optionsStr)) !== null) {
+    if (match[1] !== undefined) {
+      result.A = match[1].trim();
+    } else if (match[2] !== undefined) {
+      result.B = match[2].trim();
+    } else if (match[3] !== undefined) {
+      result.C = match[3].trim();
+    } else if (match[4] !== undefined) {
+      result.D = match[4].trim();
+    }
+  }
+  return result;
+}
+
+/**
  * Creates the final Choice and Explanation from rawAnswer + rawExplanation,
  * splitting on the first occurrence of " - " only.
  *
@@ -85,6 +107,15 @@ function buildChoiceAndExplanation(rawAnswer, rawExplanation) {
 // Fetch JSON data once the page loads
 window.addEventListener('DOMContentLoaded', async () => {
   try {
+    // Show the start modal by default
+    const startModal = document.getElementById('start-modal');
+    startModal.style.display = 'block';
+
+    // Close the start modal
+    document.getElementById('close-start').onclick = function() {
+      startModal.style.display = 'none';
+    };
+
     const response = await fetch('gpt_test_results.json');
     const data = await response.json();
     questionsData = data;
@@ -120,6 +151,15 @@ function displayQuestion() {
   // Only capitalise after periods for the options
   const modifiedOptions = capitaliseAfterPeriods(options);
 
+  // Split options into A, B, C, D
+  const splittedOptions = splitOptionsIntoABCD(modifiedOptions);
+
+  // Update the separate divs for each option
+  document.getElementById('choice-text-A').textContent = splittedOptions.A ? "A. " + splittedOptions.A : "";
+  document.getElementById('choice-text-B').textContent = splittedOptions.B ? "B. " + splittedOptions.B : "";
+  document.getElementById('choice-text-C').textContent = splittedOptions.C ? "C. " + splittedOptions.C : "";
+  document.getElementById('choice-text-D').textContent = splittedOptions.D ? "D. " + splittedOptions.D : "";
+
   // Decide whether to show helpful or harmful
   const randomSample = Math.random() < 0.5 ? "helpful" : "harmful";
   const helpfulCorrect = (currentQ["Helpful Correct?"] === "YES");
@@ -148,7 +188,6 @@ function displayQuestion() {
 
   // Update DOM
   document.getElementById('question-text').textContent = unmodifiedQuestion;
-  document.getElementById('options-text').textContent = modifiedOptions;
   document.getElementById('choice-text').textContent = modifiedChoice;
   document.getElementById('explanation-text').textContent = modifiedExplanation;
 
@@ -197,7 +236,7 @@ function addSeparatorLine() {
   if (!document.getElementById('separator-line')) {
     const sep = document.createElement('p');
     sep.id = "separator-line";
-    sep.style.textAlign = "centre";
+    sep.style.textAlign = "center"; // Standard CSS, must remain "center"
     sep.textContent = "___________";
     parent.insertBefore(sep, timerBox);
   }
