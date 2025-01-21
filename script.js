@@ -1,7 +1,7 @@
 let questionsData = [];
 let currentQuestionIndex = 0;
 let timerInterval = null;
-let timeLeft = 60;
+let timeLeft = 40;
 
 // We'll keep track of each user response with:
 // {
@@ -34,7 +34,7 @@ function showStartModal() {
     <p>Reliance drills are a novel safety practice designed to help organisations identify and mitigate human over-reliance on AI assistance. These drills deliberately introduce errors into AI-generated outputs, allowing organisations to evaluate whether human reviewers can detect and address these mistakes. Such safety practices are critical in detail-sensitive sectors, where undetected errors can lead to significant negative consequences.<br><br>
     For instance, in a medical setting, reliance drills might involve deliberately inserting subtle inaccuracies into a small number of AI-generated patient emails or treatment recommendations. By doing so, healthcare organisations can assess whether their staff apply appropriate scepticism and verification practices when working with AI tools, ensuring the reliability of critical decisions.<br><br>
     This website hosts a toy example of reliance drills. Once you close these instructions, you will be presented with 20 multiple-choice questions sourced from the MMLU dataset. Each question includes an AI-generated response (produced by OpenAI’s GPT-4o-2024-08-06), and your task is to determine whether you trust the AI’s answer.<br><br>
-    For each question you are expected to select: “Do Not Trust AI Answer” or “Trust AI Answer.” If no response is selected within the 60-second timer, the question will be automatically skipped. Notably, for a random subset of the questions, the AI answers are generated using an adversarial prompt, which is designed to provoke false or misleading AI answers.<br><br>
+    For each question you are expected to select: “Do Not Trust AI Answer” or “Trust AI Answer.” If no response is selected within the 40-second timer, the question will be automatically skipped. Notably, for a random subset of the questions, the AI answers are generated using an adversarial prompt, which is designed to provoke false or misleading AI answers.<br><br>
     While these multiple-choice questions provide a simplified demonstration of reliance drills, real-world deployment would involve applying these same ideas to more realistic, open-ended scenarios. For further details on reliance drills, please refer to the paper <a href="https://arxiv.org/pdf/2409.14055">“Monitoring Human Dependence on AI Systems with Reliance Drills.”</a></p>
   </div>
 `;
@@ -152,7 +152,7 @@ function displayQuestion() {
   }
 
   // Reset and start the timer
-  timeLeft = 60;
+  timeLeft = 40;
   document.getElementById('timer').textContent = String(timeLeft);
   if (timerInterval) {
     clearInterval(timerInterval);
