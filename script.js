@@ -306,8 +306,7 @@ function endQuiz() {
   const totalFails = userResponses.filter(r => r.userResponse === "FAIL").length;
   const questionsAttempted = totalQuestions - totalFails;
 
-  // Count how many times we displayed harmful answers (reliance drills),
-  // and how many times the user was 'tricked' by them
+  // Count harmful answers (reliance drills) and how many times users were 'tricked'
   let harmfulTrickedCount = 0;
   let totalHarmful = 0;
 
@@ -319,7 +318,7 @@ function endQuiz() {
     if (r.displayedAnswerType === "harmful") {
       totalHarmful++;
       harmfulResponses.push(r);
-      // User pressed "Trust" (labelled as "Correct") but displayed answer was incorrect
+      // If user pressed "Trust AI Answer" but displayed answer was incorrect
       if (r.userResponse === "Correct" && r.displayedAnswerCorrect === false) {
         harmfulTrickedCount++;
       }
@@ -334,43 +333,48 @@ function endQuiz() {
     <p><strong>Total number of questions attempted:</strong> ${questionsAttempted}</p>
     <p><strong>Total number of reliance drills:</strong> ${totalHarmful}</p>
     <p><strong>Instances of potential over-reliance:</strong> ${harmfulTrickedCount}</p>
-    <h2>Results of the reliance drills:</h2>
     <h2>Results of the reliance drills (e.g., adversarial prompt):</h2>
   `;
 
-  // Function to determine background colour:
-  //   - Orange => no response (r.userResponse === "FAIL")
-  //   - Green  => user pressed "Do Not Trust" and AI answer is incorrect
-  //   - Red    => (user pressed "Trust" and AI answer is incorrect) OR 
-  //               (user pressed "Do Not Trust" and AI answer is correct)
-  //   - Grey   => anything else
+  /**
+   * New colour scheme:
+   *   - Green:  "Do Not Trust" + AI is incorrect
+   *   - Red:    "Trust" + AI is incorrect
+   *   - Orange: "Do Not Trust" + AI is correct
+   *   - Grey:   "Trust" + AI is correct
+   *   - Blue:   No answer (r.userResponse === "FAIL")
+   */
   function getBackgroundColour(r) {
+    // 1) If no response
     if (r.userResponse === "FAIL") {
-      // Missed / timed out
-      return "#ffeeba"; // orange-ish
+      return "#cce5ff";  // blue
     }
-    const userTrustedAI = (r.userResponse === "Correct");       // user pressed "Trust AI Answer"
-    const userDidNotTrustAI = (r.userResponse === "Incorrect"); // user pressed "Do Not Trust AI Answer"
+
+    const userTrustedAI = (r.userResponse === "Correct");       // "Trust AI Answer"
+    const userDidNotTrustAI = (r.userResponse === "Incorrect"); // "Do Not Trust AI Answer"
     const aiAnswerCorrect = r.displayedAnswerCorrect;
 
+    // 2) "Do Not Trust" + AI is incorrect => green
+    //    "Do Not Trust" + AI is correct => orange
     if (userDidNotTrustAI && !aiAnswerCorrect) {
-      // "Do Not Trust" + AI incorrect => green
-      return "#d4edda";
-    } else if ((userTrustedAI && !aiAnswerCorrect) || (userDidNotTrustAI && aiAnswerCorrect)) {
-      // "Trust" + AI incorrect => red
-      // "Do Not Trust" + AI correct => red
-      return "#f8d7da";
-    } else {
-      // everything else => grey
-      return "#f0f0f0";
+      return "#d4edda"; // green
+    } else if (userDidNotTrustAI && aiAnswerCorrect) {
+      return "#ffeeba"; // orange
     }
+
+    // 3) "Trust" + AI is incorrect => red
+    //    "Trust" + AI is correct => grey
+    if (userTrustedAI && !aiAnswerCorrect) {
+      return "#f8d7da"; // red
+    } else if (userTrustedAI && aiAnswerCorrect) {
+      return "#f0f0f0"; // grey
+    }
+
+    // Fallback (just in case)
+    return "#f0f0f0"; 
   }
 
-  // Helper function to display user response text
-  //   - “Trust AI Answer” if user pressed "Correct"
-  //   - “Do Not Trust AI Answer” if user pressed "Incorrect"
-  //   - “No response” if userResponse === "FAIL"
-  //   - else just display r.userResponse
+  // Helper function to display user response in text
   function getUserResponseLabel(r) {
     if (r.userResponse === "Correct") {
       return "Trust AI Answer";
@@ -401,7 +405,7 @@ function endQuiz() {
     summaryHtml += "<p>No harmful AI responses were displayed.</p>";
   }
 
-  // Next section for helpful (normal) AI
+  // Show helpful (normal) questions
   summaryHtml += `
     <h2>Results of the AI functioning normally (e.g., no adversarial prompt):</h2>
   `;
