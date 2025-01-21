@@ -334,7 +334,6 @@ function endQuiz() {
     <p><strong>Total number of questions attempted:</strong> ${questionsAttempted}</p>
     <p><strong>Total number of reliance drills:</strong> ${totalHarmful}</p>
     <p><strong>Instances of potential over-reliance:</strong> ${harmfulTrickedCount}</p>
-    <h2>Results of the reliance drills:</h2>
     <h2>Results of the reliance drills (e.g., adversarial prompt):</h2>
   `;
 
@@ -345,7 +344,7 @@ function endQuiz() {
    *  - Red     => "Trust" + AI incorrect
    *  - Orange  => "Do Not Trust" + AI correct
    *  - Grey    => "Trust" + AI correct
-   *  - #ffeeba => Time out / no response
+   *  - ffeeba => Time out / no response
    */
   function getBackgroundColour(r) {
     if (r.userResponse === "FAIL") {
