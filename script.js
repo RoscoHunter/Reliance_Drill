@@ -339,25 +339,47 @@ function endQuiz() {
   `;
 
   // Function to determine background colour:
-  // Green  => Pressed "Do Not Trust" and AI answer is incorrect
-  // Red    => (Pressed "Trust" and AI answer is incorrect) OR (Pressed "Do Not Trust" and AI answer is correct)
-  // Grey   => Anything else
+  //   - Orange => no response (r.userResponse === "FAIL")
+  //   - Green  => user pressed "Do Not Trust" and AI answer is incorrect
+  //   - Red    => (user pressed "Trust" and AI answer is incorrect) OR 
+  //               (user pressed "Do Not Trust" and AI answer is correct)
+  //   - Grey   => anything else
   function getBackgroundColour(r) {
-    const userTrustedAI = (r.userResponse === "Correct");      // user pressed "Trust AI Answer"
+    if (r.userResponse === "FAIL") {
+      // Missed / timed out
+      return "#ffeeba"; // orange-ish
+    }
+    const userTrustedAI = (r.userResponse === "Correct");       // user pressed "Trust AI Answer"
     const userDidNotTrustAI = (r.userResponse === "Incorrect"); // user pressed "Do Not Trust AI Answer"
     const aiAnswerCorrect = r.displayedAnswerCorrect;
 
     if (userDidNotTrustAI && !aiAnswerCorrect) {
-      // "Do Not Trust" + AI is incorrect => green
+      // "Do Not Trust" + AI incorrect => green
       return "#d4edda";
     } else if ((userTrustedAI && !aiAnswerCorrect) || (userDidNotTrustAI && aiAnswerCorrect)) {
-      // "Trust" + AI is incorrect => red
-      // "Do Not Trust" + AI is correct => red
+      // "Trust" + AI incorrect => red
+      // "Do Not Trust" + AI correct => red
       return "#f8d7da";
     } else {
-      // Everything else => grey
+      // everything else => grey
       return "#f0f0f0";
     }
+  }
+
+  // Helper function to display user response text
+  //   - “Trust AI Answer” if user pressed "Correct"
+  //   - “Do Not Trust AI Answer” if user pressed "Incorrect"
+  //   - “No response” if userResponse === "FAIL"
+  //   - else just display r.userResponse
+  function getUserResponseLabel(r) {
+    if (r.userResponse === "Correct") {
+      return "Trust AI Answer";
+    } else if (r.userResponse === "Incorrect") {
+      return "Do Not Trust AI Answer";
+    } else if (r.userResponse === "FAIL") {
+      return "No response";
+    }
+    return r.userResponse;
   }
 
   // Show harmful (adversarial) questions
@@ -370,13 +392,7 @@ function endQuiz() {
           <p><em>Displayed Choice:</em> ${r.choice}</p>
           <p><em>Displayed Explanation:</em> ${r.explanation}</p>
           <p><em>Correct Answer:</em> ${r.correctAnswer}. ${r.correctAnswerText}</p>
-          <p><em>User Response:</em> ${
-            r.userResponse === "Correct"
-            ? "Trust AI Answer"
-            : r.userResponse === "Incorrect"
-              ? "Do Not Trust AI Answer"
-              : r.userResponse
-          }</p>
+          <p><em>User Response:</em> ${getUserResponseLabel(r)}</p>
         </div>
         <hr/>
       `;
@@ -399,13 +415,7 @@ function endQuiz() {
           <p><em>Displayed Choice:</em> ${r.choice}</p>
           <p><em>Displayed Explanation:</em> ${r.explanation}</p>
           <p><em>Correct Answer:</em> ${r.correctAnswer}. ${r.correctAnswerText}</p>
-          <p><em>User Response:</em> ${
-            r.userResponse === "Correct"
-            ? "Trust AI Answer"
-            : r.userResponse === "Incorrect"
-              ? "Do Not Trust AI Answer"
-              : r.userResponse
-          }</p>
+          <p><em>User Response:</em> ${getUserResponseLabel(r)}</p>
         </div>
         <hr/>
       `;
