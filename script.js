@@ -27,8 +27,8 @@ function showStartModal() {
   modal.className = 'modal';
   modal.style.display = 'block'; // Make it visible immediately
 
-  modal.innerHTML = `
-  <div class="modal-content">
+  modal.innerHTML = 
+  `<div class="modal-content">
     <span class="close" id="close-start">&times;</span>
     <h2>Instructions:</h2>
     <p>Reliance drills are a novel safety practice designed to help organisations identify and mitigate human over-reliance on AI assistance. These drills deliberately introduce errors into AI-generated outputs, allowing organisations to evaluate whether human reviewers can detect and address these mistakes. Such safety practices are critical in detail-sensitive sectors, where undetected errors can lead to significant negative consequences.<br><br>
@@ -36,8 +36,7 @@ function showStartModal() {
     This website hosts a toy example of reliance drills. Once you close these instructions, you will be presented with 20 multiple-choice questions sourced from the MMLU dataset. Each question includes an AI-generated response (produced by OpenAI’s GPT-4o-2024-08-06), and your task is to determine whether you trust the AI’s answer.<br><br>
     For each question you are expected to select: “Do Not Trust AI Answer” or “Trust AI Answer.” If no response is selected within the 40-second timer, the question will be automatically skipped. Notably, for a random subset of the questions, the AI answers are generated using an adversarial prompt, which is designed to provoke false or misleading AI answers.<br><br>
     While these multiple-choice questions provide a simplified demonstration of reliance drills, real-world deployment would involve applying these same ideas to more realistic, open-ended scenarios. For further details on reliance drills, please refer to the paper <a href="https://arxiv.org/pdf/2409.14055">“Monitoring Human Dependence on AI Systems with Reliance Drills.”</a></p>
-  </div>
-`;
+  </div>`;
 
   document.body.appendChild(modal);
 
@@ -329,25 +328,24 @@ function endQuiz() {
   });
 
   // Build the top summary
-  let summaryHtml = `
-    <p><strong>Total number of questions:</strong> ${totalQuestions}</p>
+  let summaryHtml = 
+    `<p><strong>Total number of questions:</strong> ${totalQuestions}</p>
     <p><strong>Total number of questions attempted:</strong> ${questionsAttempted}</p>
     <p><strong>Total number of reliance drills:</strong> ${totalHarmful}</p>
     <p><strong>Instances of potential over-reliance:</strong> ${harmfulTrickedCount}</p>
-    <h2>Results of the reliance drills:</h2>
-    <h2>Results of the reliance drills (e.g., adversarial prompt):</h2>
-  `;
+    <p><strong>Colour scheme:</strong> Green = Identify incorrect AI answer. Grey = Trust correct AI answer.  Red = Over-reliance. Orange = Under-reliance. Blue = No answer.</p>
+    <h2>Results of the reliance drills (e.g., adversarial prompt):</h2>`;
 
   // Function to determine background colour:
-  //   - Orange => no response (r.userResponse === "FAIL")
-  //   - Green  => user pressed "Do Not Trust" and AI answer is incorrect
-  //   - Red    => (user pressed "Trust" and AI answer is incorrect) OR 
-  //               (user pressed "Do Not Trust" and AI answer is correct)
-  //   - Grey   => anything else
+  // Green - When "Do Not Trust" + AI incorrect
+  // Red - When "Trust" + AI incorrect
+  // Orange - When "Do Not Trust" + AI correct
+  // Grey - When "Trust" + AI correct
+  // Blue - When no answer is provided
   function getBackgroundColour(r) {
     if (r.userResponse === "FAIL") {
-      // Missed / timed out
-      return "#ffeeba"; // orange-ish
+      // No response
+      return "#b3c6ff"; // Blue
     }
     const userTrustedAI = (r.userResponse === "Correct");       // user pressed "Trust AI Answer"
     const userDidNotTrustAI = (r.userResponse === "Incorrect"); // user pressed "Do Not Trust AI Answer"
@@ -356,21 +354,24 @@ function endQuiz() {
     if (userDidNotTrustAI && !aiAnswerCorrect) {
       // "Do Not Trust" + AI incorrect => green
       return "#d4edda";
-    } else if ((userTrustedAI && !aiAnswerCorrect) || (userDidNotTrustAI && aiAnswerCorrect)) {
+    } else if (userTrustedAI && !aiAnswerCorrect) {
       // "Trust" + AI incorrect => red
-      // "Do Not Trust" + AI correct => red
       return "#f8d7da";
-    } else {
-      // everything else => grey
+    } else if (userDidNotTrustAI && aiAnswerCorrect) {
+      // "Do Not Trust" + AI correct => orange
+      return "#ffe5cc";
+    } else if (userTrustedAI && aiAnswerCorrect) {
+      // "Trust" + AI correct => grey
       return "#f0f0f0";
     }
+    // Fallback white if something unexpected
+    return "#ffffff";
   }
 
   // Helper function to display user response text
   //   - “Trust AI Answer” if user pressed "Correct"
   //   - “Do Not Trust AI Answer” if user pressed "Incorrect"
   //   - “No response” if userResponse === "FAIL"
-  //   - else just display r.userResponse
   function getUserResponseLabel(r) {
     if (r.userResponse === "Correct") {
       return "Trust AI Answer";
@@ -386,39 +387,36 @@ function endQuiz() {
   if (harmfulResponses.length > 0) {
     harmfulResponses.forEach(r => {
       const bgColour = getBackgroundColour(r);
-      summaryHtml += `
-        <div style="background-color: ${bgColour}; padding: 10px; margin: 10px 0;">
+      summaryHtml += 
+        `<div style="background-color: ${bgColour}; padding: 10px; margin: 10px 0;">
           <p><strong>Question ${r.questionNumber}:</strong> ${r.question}</p>
           <p><em>Displayed Choice:</em> ${r.choice}</p>
           <p><em>Displayed Explanation:</em> ${r.explanation}</p>
           <p><em>Correct Answer:</em> ${r.correctAnswer}. ${r.correctAnswerText}</p>
           <p><em>User Response:</em> ${getUserResponseLabel(r)}</p>
         </div>
-        <hr/>
-      `;
+        <hr/>`;
     });
   } else {
     summaryHtml += "<p>No harmful AI responses were displayed.</p>";
   }
 
   // Next section for helpful (normal) AI
-  summaryHtml += `
-    <h2>Results of the AI functioning normally (e.g., no adversarial prompt):</h2>
-  `;
+  summaryHtml += 
+    `<h2>Results of the AI functioning normally (e.g., no adversarial prompt):</h2>`;
 
   if (helpfulResponses.length > 0) {
     helpfulResponses.forEach(r => {
       const bgColour = getBackgroundColour(r);
-      summaryHtml += `
-        <div style="background-color: ${bgColour}; padding: 10px; margin: 10px 0;">
+      summaryHtml += 
+        `<div style="background-color: ${bgColour}; padding: 10px; margin: 10px 0;">
           <p><strong>Question ${r.questionNumber}:</strong> ${r.question}</p>
           <p><em>Displayed Choice:</em> ${r.choice}</p>
           <p><em>Displayed Explanation:</em> ${r.explanation}</p>
           <p><em>Correct Answer:</em> ${r.correctAnswer}. ${r.correctAnswerText}</p>
           <p><em>User Response:</em> ${getUserResponseLabel(r)}</p>
         </div>
-        <hr/>
-      `;
+        <hr/>`;
     });
   } else {
     summaryHtml += "<p>No helpful AI responses were displayed.</p>";
