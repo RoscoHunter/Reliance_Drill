@@ -176,17 +176,6 @@ function displayQuestion() {
   document.getElementById('choice-text-C').textContent = splittedOptions.C ? "C. " + splittedOptions.C : "";
   document.getElementById('choice-text-D').textContent = splittedOptions.D ? "D. " + splittedOptions.D : "";
 
-  // Store these values so we can reuse them if the user times out.
-  window.currentQuestionData = {
-    displayedAnswerType: randomSample,
-    displayedAnswerCorrect: displayedAnswerCorrect,
-    question: unmodifiedQuestion,
-    splittedOptions: splittedOptions,
-    cText: modifiedChoice,
-    eText: modifiedExplanation,
-    correctAnswer: correctAnswer
-  };
-
   // Decide if helpful or harmful
   const randomSample = Math.random() < 0.5 ? "helpful" : "harmful";
   const helpfulCorrect = (currentQ["Helpful Correct?"] === "YES");
@@ -253,17 +242,8 @@ function updateTimer() {
 
   if (timeLeft <= 0) {
     clearInterval(timerInterval);
-
-    recordResponse(
-      "FAIL", // Timeout occurred
-      window.currentQuestionData?.displayedAnswerType || "Unknown",
-      window.currentQuestionData?.displayedAnswerCorrect || false,
-      window.currentQuestionData?.question || "Unknown question",
-      window.currentQuestionData?.splittedOptions || { A: "", B: "", C: "", D: "" },
-      window.currentQuestionData?.cText || "Choice missing",
-      window.currentQuestionData?.eText || "Explanation missing",
-      window.currentQuestionData?.correctAnswer || "Unknown"
-    );
+    // Mark as FAIL (timed out)
+    recordResponse("FAIL", null, false, null, null, null, null, null);
   }
 }
 
@@ -286,35 +266,83 @@ function addSeparatorLine() {
  * Record the user's response and move on to the next question.
  */
 function recordResponse(
-  userResponse, 
-  displayedAnswerType = "Unknown", 
-  displayedAnswerCorrect = false, 
-  qText = "Unknown question", 
-  splittedOptions = { A: "", B: "", C: "", D: "" }, 
-  cText = "Choice missing", 
-  eText = "Explanation missing", 
-  correctAnswer = ""
+  userResponse,
+  displayedAnswerType,
+  displayedAnswerCorrect,
+  qText,
+  splittedOptions,
+  cText,
+  eText,
+  correctAnswer
 ) {
   let correctAnswerText = "";
   if (splittedOptions && correctAnswer) {
+    // A, B, C, D keys
     correctAnswerText = splittedOptions[correctAnswer] || "";
   }
 
+  // Push the response, ensuring all necessary fields are included
   userResponses.push({
     questionNumber: currentQuestionIndex + 1,
-    question: qText || "Unknown question",
-    choice: cText || "No choice displayed",
-    explanation: eText || "No explanation displayed",
-    userResponse: userResponse === "FAIL" ? "Unknown (Timeout)" : userResponse,
-    displayedAnswerType: displayedAnswerType || "Unknown",
-    displayedAnswerCorrect: displayedAnswerCorrect,
-    correctAnswer: correctAnswer || "Unknown",
-    correctAnswerText: correctAnswerText || "No correct answer text"
+    question: qText || "",
+    choice: cText || "",
+    explanation: eText || "",
+    userResponse: userResponse || "FAIL", // Defaults to "FAIL" if no response
+    displayedAnswerType,
+    displayedAnswerCorrect,
+    correctAnswer: correctAnswer || "",
+    correctAnswerText: correctAnswerText
   });
 
   currentQuestionIndex++;
   displayQuestion();
 }
+
+function getBackgroundColour(r) {
+  if (r.userResponse === "FAIL") {
+    // No response (timed out)
+    return "#b3c6ff"; // Blue
+  }
+  const userTrustedAI = (r.userResponse === "Correct");
+  const userDidNotTrustAI = (r.userResponse === "Incorrect");
+  const aiAnswerCorrect = r.displayedAnswerCorrect;
+
+  if (userDidNotTrustAI && !aiAnswerCorrect) {
+    return "#d4edda"; // Green
+  } else if (userTrustedAI && !aiAnswerCorrect) {
+    return "#f8d7da"; // Red
+  } else if (userDidNotTrustAI && aiAnswerCorrect) {
+    return "#ffe5cc"; // Orange
+  } else if (userTrustedAI && aiAnswerCorrect) {
+    return "#f0f0f0"; // Grey
+  }
+  return "#ffffff"; // Default white
+}
+
+function getUserResponseLabel(r) {
+  if (r.userResponse === "Correct") {
+    return "Trust AI Answer";
+  } else if (r.userResponse === "Incorrect") {
+    return "Do Not Trust AI Answer";
+  } else if (r.userResponse === "FAIL") {
+    return "No response";
+  }
+  return r.userResponse;
+}
+
+// Example addition for skipped question summary
+harmfulResponses.forEach(r => {
+  const bgColour = getBackgroundColour(r);
+  summaryHtml += 
+    `<div style="background-color: ${bgColour}; padding: 10px; margin: 10px 0;">
+      <p><strong>Question ${r.questionNumber}:</strong> ${r.question}</p>
+      <p><em>Displayed Choice:</em> ${r.choice}</p>
+      <p><em>Displayed Explanation:</em> ${r.explanation}</p>
+      <p><em>Correct Answer:</em> ${r.correctAnswer}. ${r.correctAnswerText}</p>
+      <p><em>User Response:</em> ${getUserResponseLabel(r)}</p>
+    </div>
+    <hr/>`;
+});
 
 
 function endQuiz() {
@@ -397,11 +425,11 @@ function endQuiz() {
       return "Trust AI Answer";
     } else if (r.userResponse === "Incorrect") {
       return "Do Not Trust AI Answer";
-    } else if (r.userResponse === "Unknown (Timeout)") {
-      return "No response (Timeout)";
+    } else if (r.userResponse === "FAIL") {
+      return "No response";
     }
     return r.userResponse;
-  }  
+  }
 
   // Show harmful (adversarial) questions
   if (harmfulResponses.length > 0) {
