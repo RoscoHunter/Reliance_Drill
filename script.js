@@ -338,39 +338,47 @@ function endQuiz() {
     <h2>Results of the reliance drills (e.g., adversarial prompt):</h2>
   `;
 
-  // Function to determine background colour:
-  //   - Orange => no response (r.userResponse === "FAIL")
-  //   - Green  => user pressed "Do Not Trust" and AI answer is incorrect
-  //   - Red    => (user pressed "Trust" and AI answer is incorrect) OR 
-  //               (user pressed "Do Not Trust" and AI answer is correct)
-  //   - Grey   => anything else
+  /**
+   * Determines the background colour based on user action and correctness.
+   *
+   *  - Green   => "Do Not Trust" + AI incorrect
+   *  - Red     => "Trust" + AI incorrect
+   *  - Orange  => "Do Not Trust" + AI correct
+   *  - Grey    => "Trust" + AI correct
+   *  - #ffeeba => Time out / no response
+   */
   function getBackgroundColour(r) {
     if (r.userResponse === "FAIL") {
       // Missed / timed out
-      return "#ffeeba"; // orange-ish
+      return "#ffeeba";
     }
-    const userTrustedAI = (r.userResponse === "Correct");       // user pressed "Trust AI Answer"
-    const userDidNotTrustAI = (r.userResponse === "Incorrect"); // user pressed "Do Not Trust AI Answer"
+
+    const userTrustedAI = (r.userResponse === "Correct");
+    const userDidNotTrustAI = (r.userResponse === "Incorrect");
     const aiAnswerCorrect = r.displayedAnswerCorrect;
 
+    // Green => "do not trust" + AI is incorrect
     if (userDidNotTrustAI && !aiAnswerCorrect) {
-      // "Do Not Trust" + AI incorrect => green
-      return "#d4edda";
-    } else if ((userTrustedAI && !aiAnswerCorrect) || (userDidNotTrustAI && aiAnswerCorrect)) {
-      // "Trust" + AI incorrect => red
-      // "Do Not Trust" + AI correct => red
-      return "#f8d7da";
-    } else {
-      // everything else => grey
-      return "#f0f0f0";
+      return "green";
     }
+    // Red => "trust" + AI is incorrect
+    if (userTrustedAI && !aiAnswerCorrect) {
+      return "red";
+    }
+    // Orange => "do not trust" + AI is correct
+    if (userDidNotTrustAI && aiAnswerCorrect) {
+      return "orange";
+    }
+    // Grey => "trust" + AI is correct
+    if (userTrustedAI && aiAnswerCorrect) {
+      return "grey";
+    }
+
+    // Fallback
+    return "#f0f0f0";
   }
 
-  // Helper function to display user response text
-  //   - “Trust AI Answer” if user pressed "Correct"
-  //   - “Do Not Trust AI Answer” if user pressed "Incorrect"
-  //   - “No response” if userResponse === "FAIL"
-  //   - else just display r.userResponse
+  // Helper function to display user response label
   function getUserResponseLabel(r) {
     if (r.userResponse === "Correct") {
       return "Trust AI Answer";
