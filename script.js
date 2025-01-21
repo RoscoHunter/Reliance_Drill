@@ -176,6 +176,17 @@ function displayQuestion() {
   document.getElementById('choice-text-C').textContent = splittedOptions.C ? "C. " + splittedOptions.C : "";
   document.getElementById('choice-text-D').textContent = splittedOptions.D ? "D. " + splittedOptions.D : "";
 
+  // Store these values so we can reuse them if the user times out.
+  window.currentQuestionData = {
+    displayedAnswerType: randomSample,
+    displayedAnswerCorrect: displayedAnswerCorrect,
+    question: unmodifiedQuestion,
+    splittedOptions: splittedOptions,
+    cText: modifiedChoice,
+    eText: modifiedExplanation,
+    correctAnswer: correctAnswer
+  };
+
   // Decide if helpful or harmful
   const randomSample = Math.random() < 0.5 ? "helpful" : "harmful";
   const helpfulCorrect = (currentQ["Helpful Correct?"] === "YES");
@@ -242,8 +253,17 @@ function updateTimer() {
 
   if (timeLeft <= 0) {
     clearInterval(timerInterval);
-    // Mark as FAIL (timed out)
-    recordResponse("FAIL", null, false, null, null, null, null, null);
+    // Pass the current question info to recordResponse so it actually appears in the summary
+    recordResponse(
+      "FAIL",
+      window.currentQuestionData.displayedAnswerType,
+      window.currentQuestionData.displayedAnswerCorrect,
+      window.currentQuestionData.question,
+      window.currentQuestionData.splittedOptions,
+      window.currentQuestionData.cText,
+      window.currentQuestionData.eText,
+      window.currentQuestionData.correctAnswer
+    );
   }
 }
 
