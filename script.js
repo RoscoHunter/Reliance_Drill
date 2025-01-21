@@ -359,19 +359,19 @@ function endQuiz() {
 
     // Green => "do not trust" + AI is incorrect
     if (userDidNotTrustAI && !aiAnswerCorrect) {
-      return "d4edda";
+      return "#d4edda";
     }
     // Red => "trust" + AI is incorrect
     if (userTrustedAI && !aiAnswerCorrect) {
-      return "f8d7da";
+      return "#f8d7da";
     }
     // Orange => "do not trust" + AI is correct
     if (userDidNotTrustAI && aiAnswerCorrect) {
-      return "#ff8100";
+      return "#ffdbbb";
     }
     // Grey => "trust" + AI is correct
     if (userTrustedAI && aiAnswerCorrect) {
-      return "f0f0f0";
+      return "#f0f0f0";
     }
   }
 
