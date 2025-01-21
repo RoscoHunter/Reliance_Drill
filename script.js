@@ -306,17 +306,20 @@ function endQuiz() {
   const totalFails = userResponses.filter(r => r.userResponse === "FAIL").length;
   const questionsAttempted = totalQuestions - totalFails;
 
+  // Count how many times we displayed harmful answers (reliance drills),
+  // and how many times the user was 'tricked' by them
   let harmfulTrickedCount = 0;
   let totalHarmful = 0;
+
+  // Separate responses into harmful or helpful for reporting
   const harmfulResponses = [];
   const helpfulResponses = [];
 
-  // Separate responses by displayedAnswerType (“harmful” vs. “helpful”).
   userResponses.forEach(r => {
     if (r.displayedAnswerType === "harmful") {
       totalHarmful++;
       harmfulResponses.push(r);
-      // If user pressed "Trust AI Answer" but the answer was incorrect => “tricked.”
+      // User pressed "Trust" (labelled as "Correct") but displayed answer was incorrect
       if (r.userResponse === "Correct" && r.displayedAnswerCorrect === false) {
         harmfulTrickedCount++;
       }
@@ -325,66 +328,61 @@ function endQuiz() {
     }
   });
 
-  // Build the top portion of the summary
+  // Build the top summary
   let summaryHtml = `
     <p><strong>Total number of questions:</strong> ${totalQuestions}</p>
     <p><strong>Total number of questions attempted:</strong> ${questionsAttempted}</p>
     <p><strong>Total number of reliance drills:</strong> ${totalHarmful}</p>
     <p><strong>Instances of potential over-reliance:</strong> ${harmfulTrickedCount}</p>
-    <p><strong>Colour coding:</strong> Green = Identify incorrect AI answer. Grey = Trust correct AI answer.  Red = Over-reliance. Orange = Under-reliance. Blue = No answer.  </p>    <h2>Results of the reliance drills (e.g., adversarial prompt):</h2>
+    <h2>Results of the reliance drills:</h2>
+    <h2>Results of the reliance drills (e.g., adversarial prompt):</h2>
   `;
 
-  /**
-   * Colour scheme:
-   *   - Green:  “Do Not Trust” + AI incorrect
-   *   - Red:    “Trust” + AI incorrect
-   *   - Orange: “Do Not Trust” + AI correct
-   *   - Grey:   “Trust” + AI correct
-   *   - Blue:   Unanswered (userResponse === "FAIL")
-   */
+  // Function to determine background colour:
+  //   - Orange => no response (r.userResponse === "FAIL")
+  //   - Green  => user pressed "Do Not Trust" and AI answer is incorrect
+  //   - Red    => (user pressed "Trust" and AI answer is incorrect) OR 
+  //               (user pressed "Do Not Trust" and AI answer is correct)
+  //   - Grey   => anything else
   function getBackgroundColour(r) {
     if (r.userResponse === "FAIL") {
-      return "#cce5ff"; // Blue
+      // Missed / timed out
+      return "#ffeeba"; // orange-ish
     }
-    const userTrustedAI = (r.userResponse === "Correct");       // “Trust AI Answer”
-    const userDidNotTrustAI = (r.userResponse === "Incorrect"); // “Do Not Trust AI Answer”
+    const userTrustedAI = (r.userResponse === "Correct");       // user pressed "Trust AI Answer"
+    const userDidNotTrustAI = (r.userResponse === "Incorrect"); // user pressed "Do Not Trust AI Answer"
     const aiAnswerCorrect = r.displayedAnswerCorrect;
 
-    // "Do Not Trust" + AI incorrect => Green
     if (userDidNotTrustAI && !aiAnswerCorrect) {
+      // "Do Not Trust" + AI incorrect => green
       return "#d4edda";
-    }
-    // "Do Not Trust" + AI correct => Orange
-    if (userDidNotTrustAI && aiAnswerCorrect) {
-      return "#ffeeba";
-    }
-    // "Trust" + AI incorrect => Red
-    if (userTrustedAI && !aiAnswerCorrect) {
+    } else if ((userTrustedAI && !aiAnswerCorrect) || (userDidNotTrustAI && aiAnswerCorrect)) {
+      // "Trust" + AI incorrect => red
+      // "Do Not Trust" + AI correct => red
       return "#f8d7da";
-    }
-    // "Trust" + AI correct => Grey
-    if (userTrustedAI && aiAnswerCorrect) {
+    } else {
+      // everything else => grey
       return "#f0f0f0";
     }
-    return "#f0f0f0";
   }
 
-  // Convert userResponse codes into human-friendly labels
+  // Helper function to display user response text
+  //   - “Trust AI Answer” if user pressed "Correct"
+  //   - “Do Not Trust AI Answer” if user pressed "Incorrect"
+  //   - “No response” if userResponse === "FAIL"
+  //   - else just display r.userResponse
   function getUserResponseLabel(r) {
     if (r.userResponse === "Correct") {
       return "Trust AI Answer";
     } else if (r.userResponse === "Incorrect") {
       return "Do Not Trust AI Answer";
     } else if (r.userResponse === "FAIL") {
-      return "Not answered";
+      return "No response";
     }
-    // Fallback if there's any unexpected value
     return r.userResponse;
   }
 
-  // -----------------
-  // Harmful Section
-  // -----------------
+  // Show harmful (adversarial) questions
   if (harmfulResponses.length > 0) {
     harmfulResponses.forEach(r => {
       const bgColour = getBackgroundColour(r);
@@ -403,12 +401,11 @@ function endQuiz() {
     summaryHtml += "<p>No harmful AI responses were displayed.</p>";
   }
 
-  // -----------------
-  // Helpful Section
-  // -----------------
+  // Next section for helpful (normal) AI
   summaryHtml += `
     <h2>Results of the AI functioning normally (e.g., no adversarial prompt):</h2>
   `;
+
   if (helpfulResponses.length > 0) {
     helpfulResponses.forEach(r => {
       const bgColour = getBackgroundColour(r);
@@ -427,7 +424,7 @@ function endQuiz() {
     summaryHtml += "<p>No helpful AI responses were displayed.</p>";
   }
 
-  // Insert summary HTML into the modal
+  // Place the final compiled HTML into the summary modal
   document.getElementById('summary-results').innerHTML = summaryHtml;
 
   const summaryModal = document.getElementById('summary-modal');
